@@ -6,17 +6,21 @@
 </template>
 
 <script>
-import * as tf from "@tensorflow/tfjs-core";
-import { loadGraphModel } from "@tensorflow/tfjs-converter";
-// import * as tflite from "@tensorflow/tfjs-tflite";
-// import cocoSsd from "@tensorflow-models/coco-ssd";
 import { reactive, onMounted } from "vue";
+import detectFromVideoFrame from "./utils/detectFromVideoFrame";
+import * as tflite from "@tensorflow/tfjs-tflite";
+tflite.setWasmPath(
+  "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite@0.0.1-alpha.8/dist/"
+);
+// import * as tf from "@tensorflow/tfjs-core";
+// tf.setBackend("cpu");
+// import { loadGraphModel } from "@tensorflow/tfjs-converter";
+// import cocoSsd from "@tensorflow-models/coco-ssd";
+// import showDetection from "./utils/showDetection";
 
 export default {
   name: "App",
   setup() {
-    tf.setBackend("webgl");
-    // semacam useRef
     const camera = reactive({ srcObject: null });
 
     const webcam = async () => {
@@ -38,88 +42,35 @@ export default {
         // load webcam
         await webcam();
         console.log("Webcam loaded!");
+        const cam = document.getElementById("cam");
 
         // TODO: load pre-trained models
         // const loadModel = await tflite.loadTFLiteModel('../converted_tflite/model_unquant.tflite')
         // const loadModel = await cocoSsd.load();
-        const loadModel = await loadGraphModel("../model_web/model.json");
-        console.log("model loaded!");
-        const cam = document.getElementById("cam");
+        // const loadModel = await loadGraphModel("../model_web/model.json");
+        const loadModel = await tflite.ObjectDetector.create(
+          "../converted_tflite/model_unquant.tflite"
+        );
+        // tflite.ObjectDetector.create("../converted_tflite/model_unquant.tflite")
+        //   .then((loadModel) => {
+        //     console.log("model loaded!");
+        //     console.log(loadModel);
+        //     detectFromVideoFrame(loadModel, cam);
+        //   })
+        //   .catch((error) => {
+        //     console.error(error);
+        //   });
 
         // panggil fungsi detectFromVideoFrame
         detectFromVideoFrame(loadModel, cam);
       } catch (e) {
-        console.log(e);
+        console.error(e);
       }
     };
 
-    const detectFromVideoFrame = (model, video) => {
-      console.log("detectFromVideoFram");
-      // detect object dari video
-      model.detect(video).then(
-        (predictions) => {
-          console.log("Predictions: ", predictions);
-          showDetection(predictions); // show object detection
+    // detectFromVideoFrame
 
-          requestAnimationFrame(() => {
-            detectFromVideoFrame(model, video);
-          });
-        },
-        (error) => {
-          console.log(error);
-        }
-      );
-    };
-
-    // draw the detections bounding boxes, as well as the labels, and confidence score over the video
-    const showDetection = (prediction) => {
-      console.log("Show detection: ", prediction);
-      const c = document.getElementById("c");
-      const ctx = c.getContext("2d");
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-      const font = "24px helvetica";
-      ctx.font = font;
-      ctx.textBaseline = "top";
-      prediction.forEach((prediction) => {
-        const x = prediction.bbox[0];
-        const y = prediction.bbox[1];
-        const width = prediction.bbox[2];
-        const height = prediction.bbox[3];
-
-        // Draw the bounding box.
-        ctx.strokeStyle = "#2fff00";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, width, height);
-
-        // Draw the label background.
-        ctx.fillStyle = "#2fff00";
-
-        // ganti 'preson' jadi 'toilet'
-        let predictionText = prediction.class;
-        if (predictionText == "person") {
-          predictionText = "toilet";
-        }
-
-        const textWidth = ctx.measureText(predictionText).width;
-        const textHeight = parseInt(font, 10);
-
-        // draw top left rectangle
-        ctx.fillRect(x, y, textWidth + 10, textHeight + 10);
-
-        // draw bottom left rectangle
-        ctx.fillRect(
-          x,
-          y + height - textHeight,
-          textWidth + 15,
-          textHeight + 10
-        );
-
-        // Draw the text last to ensure it's on top.
-        ctx.fillStyle = "#000000";
-        ctx.fillText(predictionText, x, y);
-        ctx.fillText(prediction.score.toFixed(2), x, y + height - textHeight);
-      });
-    };
+    // showDetection
 
     onMounted(() => {
       if (
@@ -140,22 +91,4 @@ export default {
 </script>
 
 <style>
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-}
-video,
-canvas {
-  /* height: 100vh;
-  width: 100vw; */
-  /* flip the video */
-  transform: scaleX(-1);
-  position: fixed;
-  height: 100%;
-  width: 100%;
-  object-fit: cover;
-}
 </style>
